@@ -9,9 +9,9 @@ list_message_ko = [
     ,"알림을 반복하시겠어요?"   # second repeat
     ,"{} 요일을 선택해주세요"      # third choose
     ,"멤버들과 알림 시간을 언제 정하시겠어요?"  #fourth ask # fifth vote
-    ,"알림 시간을 투표하겠습니다. 방에 계신 분들은 투표를 위해 /h [시간]을 입력해주세요. 알림 시간이 이미 확정된 경우 /f [시간] 을 입력하시면 해당 시간으로 투표는 종료됩니다."
+    ,"알림 시간을 투표하겠습니다. 방에 계신 분들은 투표를 위해 /v [시간]을 입력해주세요. 알림 시간이 이미 확정된 경우 /f [시간] 을 입력하시면 해당 시간으로 투표는 종료됩니다."
     ,"알림 시간을 정할 알림을 당일 드리겠습니다. 몇 시부터 멤버들과 정하실지 /t [0-23] 형태로 입력해주세요. " # 시간 버튼.. # sixth ensure
-    ,"수고하셨습니다. {}시로 알림시간이 확정되었습니다." # seventh fix
+    ,"수고하셨습니다. {}시로 알림시간이 확정되었습니다. " # seventh fix
     ,"미리알림을 설정하시겠어요?" # eighth preacq
     ,"설정이 완료되었습니다." # ninth comp"
     ,"알겠습니다. 멤버들과 시간을 정할 수 있도록 당일 {}시에 알림을 드릴게요. "
@@ -415,10 +415,20 @@ conv_handler2 = ConversationHandler(
     }
     ,fallbacks=[CommandHandler('t', fixtime_tday, pass_args=True)]
 )
-
 updater.dispatcher.add_handler(conv_handler2)
 
-updater.dispatcher.add_handler(CommandHandler('f', forcefixtime, pass_args=True))
+conv_handler3 = ConversationHandler(
+    entry_points=[CommandHandler('f', forcefixtime, pass_args=True)]
+    ,states={
+        PREACQ2: [CallbackQueryHandler(preacq2)]
+        ,COMP: [CallbackQueryHandler(comp)]
+        # ,FIX_TDAY: [CallbackQueryHandler(fixtime_tday)]
+    }
+    ,fallbacks=[CommandHandler('f', forcefixtime, pass_args=True)]
+)
+updater.dispatcher.add_handler(conv_handler3)
+
+#updater.dispatcher.add_handler(CommandHandler('f', forcefixtime, pass_args=True))
 updater.dispatcher.add_handler(CommandHandler('v', votetime, pass_args=True))
 
 
