@@ -60,6 +60,8 @@ list_command = [
     ,"show"
 ]
 
+dict_data = {}
+
 CREATE, REPEAT, CHOOSE, CHOOSE_CHK, ASK, VOTE, ENSURE, FIX, PREACQ, COMP, FIX_TDAY, PREACQ2, ASK_CHK = range(13)
 
 # 언어 설정
@@ -85,6 +87,10 @@ def create(update, context):
     context.message.reply_text(list_message[0], reply_markup=reply_markup)
     chat_id = context.message.chat_id
     list_channel[chat_id] = 'create'
+
+    dict_data[chat_id] = {'repeat': 'n', 'week':['sun','tue'], 'state':'create'}
+    dict_data[chat_id]['week'].append('wed')
+    #dict_data[chat_id]['week'].remove('sun')
     #context.message.reply_text("got message!")
     return REPEAT
     #return ConversationHandler.END
