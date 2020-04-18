@@ -7,6 +7,8 @@ from telegram.ext import Updater, MessageHandler, CommandHandler, Filters, Callb
 from telegrambot import TelBot
 
 
+from collections import Counter 
+
 #SUN, MON, TUE, WED, THU, FRI, SAT = range(7)
 dict_week = {"Sunday":0, "Monday":1, "Tuesday":2, "Wednesday":3, "Thursday":4, "Friday":5, "Saturday":6}
 list_selected_week = [False, False, False, False, False, False, False]
@@ -227,40 +229,47 @@ def vote_alarm_callback(update, context):
                             ,text='abcde')
 
 if __name__ == "__main__":
-    kairos_bot_token = "1110549427:AAHYDs1Lo3zUmSUpprI_qN04m-ekRSfvhxw"
+    # kairos_bot_token = "1110549427:AAHYDs1Lo3zUmSUpprI_qN04m-ekRSfvhxw"
     
-    alm = TelBot("kairos", kairos_bot_token)
+    # alm = TelBot("kairos", kairos_bot_token)
 
-    dict_process = { CREATE: [CallbackQueryHandler(create_callback)]
-                        , REPEAT: [CallbackQueryHandler(repeated_callback)]
-                        , ASKDAY: [CallbackQueryHandler(askday_callback)]
-                        , FIXDAY: [CallbackQueryHandler(fixday_callback)]
-                        , PREACQ: [CallbackQueryHandler(preacq_callback)]
-                        , CLOSE: [CallbackQueryHandler(close_callback)]
-                        , CANCLE: [CallbackQueryHandler(canc_callback)]
-                        , COMP: [CallbackQueryHandler(comp_callback)] 
-                        , CHECK: [CallbackQueryHandler(repeated_callback_check)]
-                    }
+    # dict_process = { CREATE: [CallbackQueryHandler(create_callback)]
+    #                     , REPEAT: [CallbackQueryHandler(repeated_callback)]
+    #                     , ASKDAY: [CallbackQueryHandler(askday_callback)]
+    #                     , FIXDAY: [CallbackQueryHandler(fixday_callback)]
+    #                     , PREACQ: [CallbackQueryHandler(preacq_callback)]
+    #                     , CLOSE: [CallbackQueryHandler(close_callback)]
+    #                     , CANCLE: [CallbackQueryHandler(canc_callback)]
+    #                     , COMP: [CallbackQueryHandler(comp_callback)] 
+    #                     , CHECK: [CallbackQueryHandler(repeated_callback_check)]
+    #                 }
                         
-    #alm.addHandler('c', 'create', create, dict_process, False)
-    conv_handler = ConversationHandler(entry_points=[CommandHandler('create', create)]
-                                , states=dict_process
-                                , fallbacks=[CommandHandler('create', create)]
-                                )
-    alm.updater.dispatcher.add_handler(conv_handler)
+    # #alm.addHandler('c', 'create', create, dict_process, False)
+    # conv_handler = ConversationHandler(entry_points=[CommandHandler('create', create)]
+    #                             , states=dict_process
+    #                             , fallbacks=[CommandHandler('create', create)]
+    #                             )
+    # alm.updater.dispatcher.add_handler(conv_handler)
 
-    # alm.updater.dispatcher.add_handler(CommandHandler('create', create))
-    # alm.updater.dispatcher.add_handler(CallbackQueryHandler(create_callback, pattern='create_yes'))
-    # alm.updater.dispatcher.add_handler(CallbackQueryHandler(repeated_callback, pattern='repeat_yes'))
+    # # alm.updater.dispatcher.add_handler(CommandHandler('create', create))
+    # # alm.updater.dispatcher.add_handler(CallbackQueryHandler(create_callback, pattern='create_yes'))
+    # # alm.updater.dispatcher.add_handler(CallbackQueryHandler(repeated_callback, pattern='repeat_yes'))
 
-    #alm.updater.dispatcher.add_handler(CommandHandler('once', job_callback, pass_job_queue=True))
+    # #alm.updater.dispatcher.add_handler(CommandHandler('once', job_callback, pass_job_queue=True))
     
-    timer_handler = CommandHandler('timer', callback_timer, pass_job_queue=True, pass_args=True)
-    alm.updater.dispatcher.add_handler(timer_handler)
+    # timer_handler = CommandHandler('timer', callback_timer, pass_job_queue=True, pass_args=True)
+    # alm.updater.dispatcher.add_handler(timer_handler)
 
-    alm.addHandler('c', 'f', vote_alarm, vote_alarm_callback, True)
+    # alm.addHandler('c', 'f', vote_alarm, vote_alarm_callback, True)
 
-    alm.addHandler('c', 'hello', hello, None, True)
-    alm.addHandler('c', 'stop', alm.stop, None, True)
+    # alm.addHandler('c', 'hello', hello, None, True)
+    # alm.addHandler('c', 'stop', alm.stop, None, True)
 
-    alm.start()
+    # alm.start()
+
+
+    dict_list = {"3o233423":3, "sdfjlskjfa": 4, "dfjal;sdkfas":3, "djflksadjfa":5}
+
+    determine = [val for val in dict_list.values()]
+    print(Counter(determine).most_common(1)[0][0])
+
