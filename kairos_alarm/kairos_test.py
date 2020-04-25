@@ -55,7 +55,6 @@ list_button_ko = [
 list_week = [
      "Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"
 ]
-#list_week_selected = [False, False, False, False, False, False, False]
 
 list_command = [
     "create"
@@ -98,14 +97,10 @@ def create(update, context):
     reply_markup = InlineKeyboardMarkup([makebutton(0), makebutton(1)])
     context.message.reply_text(list_message[0], reply_markup=reply_markup)
     chat_id = context.message.chat_id
-    
-    #list_channel[chat_id] = 'create'
-    #dict_data[chat_id] = {'repeat': 'n', 'week':['sun','tue'], 'state':'create'}
-    #dict_data[chat_id]['week'].append('wed')
-    #dict_data[chat_id]['week'].remove('sun')
-    #context.message.reply_text("got message!")
-
     # save state
+    if chat_id in dict_data:
+        del dict_data[chat_id]
+
     dict_data[chat_id] = {'state':'create'}
 
     return REPEAT
@@ -114,7 +109,7 @@ def create(update, context):
 def repeat(update, context):
     query = context.callback_query
     chat_id = query.message.chat_id
-    #list_channel[chat_id] = 'repeat'
+    
     # save state
     dict_data[chat_id]['state'] = 'repeat'
 
@@ -269,7 +264,7 @@ def choose_chk(update, context):
 def ask(update, context):
     query = context.callback_query
     chat_id = query.message.chat_id
-    #list_channel[chat_id] = 'ask'
+    
     # save state
     dict_data[chat_id]['state'] = 'ask'
     dict_data[chat_id]['setdone'] = False
@@ -344,7 +339,7 @@ def ensure(update, context):
     query = context.callback_query
     chat_id = query.message.chat_id
     # fix_chk
-    #list_channel[chat_id] = 'ensure'
+    
     # save state
     dict_data[chat_id]['state'] = 'ensure'
     update.edit_message_text(
@@ -357,7 +352,7 @@ def ensure(update, context):
 def fix(update, context):
     query = context.callback_query
     chat_id = query.message.chat_id
-    #list_channel[chat_id] = 'fix'
+    
     # save state
     dict_data[chat_id]['state'] = 'fix'
     update.edit_message_text(
@@ -376,7 +371,7 @@ def fix(update, context):
 def preacq(update, context):
     query = context.callback_query
     chat_id = query.message.chat_id
-    #list_channel[chat_id] = 'preacq'
+    
     # save state
     dict_data[chat_id]['state'] = 'preacq'
     update.edit_message_text(
@@ -395,7 +390,7 @@ def preacq(update, context):
 def preacq2(update, context):
     query = context.callback_query
     chat_id = query.message.chat_id
-    #list_channel[chat_id] = 'preacq2'
+    
     # save state
     dict_data[chat_id]['state'] = 'preacq2'
     if query.data == "yes":
@@ -432,7 +427,7 @@ def preacq2(update, context):
 def comp(update, context):
     query = context.callback_query
     chat_id = query.message.chat_id
-    #list_channel[chat_id] = 'comp'
+    
     # save state
     dict_data[chat_id]['state'] = 'comp'
     
@@ -466,77 +461,104 @@ def comp(update, context):
 
 def fixtime_tday(update, context, args):
     chat_id = context.message.chat_id
-    #list_channel[chat_id] = 'fixtime_tday'
-    # save state
-    dict_data[chat_id]['state'] = 'fixtime_tday'
-    #if args[0] >= 0 and args[0] <= 23 then save, or show message and go fix_chk
-    if args[0].isdigit():
-        input_time = int(args[0])
-        if 0 <= input_time and input_time <= 23:
-            # save
-            reply_markup = InlineKeyboardMarkup([makebutton(0), makebutton(1)]) #, makebutton(2)])
-            context.message.reply_text(list_message[10].format(args[0]) + list_message[8], reply_markup=reply_markup) 
-            # 시간 설정 완료했으니 당일 알림 줄게 # 미리알림 하쉴?
-            dict_data[chat_id]['tdayalarmtime'] = input_time
-            return PREACQ2
+    if chat_id in dict_data and 'setwhen' in dict_data[chat_id]:
+
+        chat_id = context.message.chat_id
+        
+        # save state
+        dict_data[chat_id]['state'] = 'fixtime_tday'
+        #if args[0] >= 0 and args[0] <= 23 then save, or show message and go fix_chk
+        if args[0].isdigit():
+            input_time = int(args[0])
+            if 0 <= input_time and input_time <= 23:
+                # save
+                reply_markup = InlineKeyboardMarkup([makebutton(0), makebutton(1)]) #, makebutton(2)])
+                context.message.reply_text(list_message[10].format(args[0]) + list_message[8], reply_markup=reply_markup) 
+                # 시간 설정 완료했으니 당일 알림 줄게 # 미리알림 하쉴?
+                dict_data[chat_id]['tdayalarmtime'] = input_time
+                return PREACQ2
+            else:
+                context.message.reply_text(list_message[14].format('t')) # 제대로 입력하라고 했잖니 0-23
+                return ConversationHandler.END
         else:
             context.message.reply_text(list_message[14].format('t')) # 제대로 입력하라고 했잖니 0-23
             return ConversationHandler.END
     else:
-        context.message.reply_text(list_message[14].format('t')) # 제대로 입력하라고 했잖니 0-23
+        # 애기들은 가라
+        context.message.reply_text("정상적인 접근이 아닙니다.\n/create 명령어로 알람 등록을 시작해주세요.") # 제대로 입력하라고 했잖니 0-23
         return ConversationHandler.END
 
 def forcefixtime(update, context, args):
     chat_id = context.message.chat_id
-    #list_channel[chat_id] = 'forcefixtime'
+    
     # save state
-    dict_data[chat_id]['state'] = 'forcefixtime'
-    #if args[0] >= 0 and args[0] <= 23 then save, or show message and go fix_chk
-    input_time = int(args[0])
-    if 0 <= input_time and input_time <= 23:
-        # save
-        # ㅅㄱ {} 시로 저장완료 미리알림 하쉴?
-        reply_markup = InlineKeyboardMarkup([makebutton(0), makebutton(1)]) #, makebutton(2)])
-        context.message.reply_text(list_message[7].format(args[0]) + list_message[8], reply_markup=reply_markup) 
-        dict_data[chat_id]['setdone'] = True
-        dict_data[chat_id]['alarmtime'] = input_time
-        return PREACQ2
+
+    if chat_id in dict_data and 'setwhen' in dict_data[chat_id]:
+
+        dict_data[chat_id]['state'] = 'forcefixtime'
+        #if args[0] >= 0 and args[0] <= 23 then save, or show message and go fix_chk
+        if args[0].isdigit():
+            input_time = int(args[0])
+            if 0 <= input_time and input_time <= 23:
+                # save
+                # ㅅㄱ {} 시로 저장완료 미리알림 하쉴?
+                reply_markup = InlineKeyboardMarkup([makebutton(0), makebutton(1)]) #, makebutton(2)])
+                context.message.reply_text(list_message[7].format(args[0]) + list_message[8], reply_markup=reply_markup) 
+                dict_data[chat_id]['setdone'] = True
+                dict_data[chat_id]['alarmtime'] = input_time
+                dict_data[chat_id]['setwhen'] = 'now' # 당일알림도 /f를 하면 바로 설정 가능함.
+                return PREACQ2
+            else:
+                context.message.reply_text(list_message[14].format('f')) # 제대로 입력하라고 했잖니 0-23
+                return ConversationHandler.END
+        else:
+            context.message.reply_text(list_message[14].format('f')) # 제대로 입력하라고 했잖니 0-23
+            return ConversationHandler.END
     else:
-        context.message.reply_text(list_message[14].format('f')) # 제대로 입력하라고 했잖니 0-23
+        # 애기들은 가라
+        context.message.reply_text("정상적인 접근이 아닙니다.\n/create 명령어로 알람 등록을 시작해주세요.") # 제대로 입력하라고 했잖니 0-23
         return ConversationHandler.END
+
 
 def votetime(update, context, args):
     chat_id = context.message.chat_id
-    #list_channel[chat_id] = 'votetime'
+    
     # save state
     # dict_data[chat_id]['state'] = 'votetime'
-    dict_data[chat_id]['voted'] = {}
-    input_time = int(args[0])
-    sender_id = context.message.from_user.id
-    if 0 <= input_time and input_time <= 23:
-        member_count = context.message.bot.get_chat_members_count(chat_id)
-        dict_data[chat_id]['voted'][sender_id] = input_time
-        dict_data[chat_id]['votecnt'] = len(dict_data[chat_id]['voted'])
-        # save
-        if member_count == dict_data[chat_id]['votecnt'] + 1:
-            determin_time = 0
-            dict_data[chat_id]['setdone'] = True
-            # 다수결 시간 값 가져오기
-            determin_time = Counter([val for val in dict_data[chat_id]['voted'].values()]).most_common(1)[0][0]
-            dict_data[chat_id]['alarmtime'] = determin_time
-            reply_markup = InlineKeyboardMarkup([makebutton(0), makebutton(1)]) #, makebutton(2)])
-            context.message.reply_text(list_message[7].format(args[0]) + list_message[8], reply_markup=reply_markup) 
-            return PREACQ2
+
+    if chat_id in dict_data and 'setwhen' in dict_data[chat_id]:
+
+        dict_data[chat_id]['voted'] = {}
+        input_time = int(args[0])
+        sender_id = context.message.from_user.id
+        if 0 <= input_time and input_time <= 23:
+            member_count = context.message.bot.get_chat_members_count(chat_id)
+            dict_data[chat_id]['voted'][sender_id] = input_time
+            dict_data[chat_id]['votecnt'] = len(dict_data[chat_id]['voted'])
+            # save
+            if member_count == dict_data[chat_id]['votecnt'] + 1:
+                determin_time = 0
+                dict_data[chat_id]['setdone'] = True
+                # 다수결 시간 값 가져오기
+                determin_time = Counter([val for val in dict_data[chat_id]['voted'].values()]).most_common(1)[0][0]
+                dict_data[chat_id]['alarmtime'] = determin_time
+                reply_markup = InlineKeyboardMarkup([makebutton(0), makebutton(1)]) #, makebutton(2)])
+                context.message.reply_text(list_message[7].format(args[0]) + list_message[8], reply_markup=reply_markup) 
+                return PREACQ2
+            else:
+                # {} 시로 저장되었고, {} 명의 투표가 남았습니다. 17
+                # "현재 상태: \n" 18
+                #  "{}시: {}명\n" 19
+                # 투표를 중복으로 했을 경우, 수정되도록. 사람 id 를 같이 저장할 것.
+                # 채널의 인원과 vote 된 수를 비교하여 같으면 시간 설정
+                context.message.reply_text(list_message[17].format(input_time, member_count - 1 - dict_data[chat_id]['votecnt'])) # 
+                return ConversationHandler.END
         else:
-            # {} 시로 저장되었고, {} 명의 투표가 남았습니다. 17
-            # "현재 상태: \n" 18
-            #  "{}시: {}명\n" 19
-            # 투표를 중복으로 했을 경우, 수정되도록. 사람 id 를 같이 저장할 것.
-            # 채널의 인원과 vote 된 수를 비교하여 같으면 시간 설정
-            context.message.reply_text(list_message[17].format(input_time, member_count - 1 - dict_data[chat_id]['votecnt'])) # 
+            context.message.reply_text(list_message[14].format('h')) # 제대로 입력하라고 했잖니 0-23
             return ConversationHandler.END
     else:
-        context.message.reply_text(list_message[14].format('h')) # 제대로 입력하라고 했잖니 0-23
+        # 애기들은 가라
+        context.message.reply_text("정상적인 접근이 아닙니다.\n/create 명령어로 알람 등록을 시작해주세요.") # 제대로 입력하라고 했잖니 0-23
         return ConversationHandler.END
 
 
