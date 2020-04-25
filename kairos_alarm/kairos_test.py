@@ -28,6 +28,7 @@ list_message_ko = [
     ,"{} 시로 저장되었고, {} 명의 투표가 남았습니다." # 17
     ,"현재 상태: \n" # 18
     ,"    {}시: {}명\n" # 19
+    ,""
 ]
 list_button_ko = [
     ["예", "yes"]
@@ -486,6 +487,86 @@ def votetime(update, context, args):
         context.message.reply_text(list_message[14].format('h')) # 제대로 입력하라고 했잖니 0-23
         return ConversationHandler.END
 
+
+def show(update, context):
+    # 리스트에 채널명으로 검사해서 있으면 보여준다
+    chat_id = context.message.chat_id
+    if chat_id not in dict_data:
+        context.message.reply_text("생성된 알림이 없습니다. /create 명령어로 알람을 생성할 수 있습니다.")
+    else:
+        # 상태 값에 따라서 보여주기..
+        this_data = dict_data[chat_id]
+        strtext = ""
+        if this_data['setdone'] in this_data:
+            if this_data['setdone'] == True:
+                strtext += "알람은 {}시로 설정되었습니다.\n".format(this_data['alaramtime'])
+                # 요일 formatting.
+                this_week = ""
+                strtext += "요일은 {} 입니다.".format(this_week)
+                if this_data['preacq'] == True:
+                    strtext += "미리알림은 {}시 입니다.\n".format(this_data['preacqtime'])
+                else:
+                    strtext += "미리알림은 설정되어있지 않습니다.\n."
+            else:
+                #state 값에 따라서 다르게 보여주기.
+                if this_data['setwhen'] in this_data:
+                    if this_data['setwhen'] == 'now':
+                        # 현재 투표 상태 표시
+                        pass
+                    else:
+                        # 당일 알림 시간 표시
+                        if this_data['tdayalarmtime'] in this_data:
+                            strtext += "당일 투표알림은 {}시 입니다.\n".format(this_data['tdayalarmtime'])
+                        else:
+                            strtext += "당일 투표알림이 설정되었지만 시간은 설정되어있지 않네요. 지금 설정하시겠어요?\n"
+                            reply_markup = InlineKeyboardMarkup([makebutton(0), makebutton(1)]) #, makebutton(2)])
+                            context.message.reply_text(strtext, reply_markup=reply_markup)
+                            return PREACQ2
+                else:
+                    # 반복
+                    if this_data['repeat'] in this_data:
+                        if this_data['repeat'] == True:
+                            strtext += "알림은 주마다 반복됩니다.\n"
+                        else:
+                            strtext += "알림은 주마다 반복되지 않는 일회성 알림입니다.\n"
+                        # 요일 설정 표시
+                        if this_data['setdone'] in this_data:
+                            # 요일 설정 완료까지 한 상태 인데 당일알림인지 지금부터인지 투표시간은 안 정한 상태 (정했으면 위 setwhen에 걸렸음)
+                            # 요일표시
+                            # 당일알림/지금투표인지 설정하는 부분으로 이동
+                            pass
+                        else:
+                            # 요일 설정까지는 안하고
+                            # week 에 하나도 체크 안 되어있으면 맨 처음 상태로 choose_chk인가? 
+                            # 체크 하나라도 true 되어 있으면 choose_chk인가로..
+                            pass
+                    else:
+                        # 생성만 한 상태
+                        strtext += "알람이 생성만 되어있네요. 설정을 이어가시겠어요? 이어가지 않을 경우 생성된 알람은 삭제됩니다.\n"
+                        reply_markup = InlineKeyboardMarkup([makebutton(0), makebutton(1)]) #, makebutton(2)])
+                        context.message.reply_text(strtext, reply_markup=reply_markup)
+                        return REPEAT
+
+
+
+            context.message.reply_text(strtext)
+
+
+def delete(update, context):
+    # 리스트에 채널명으로 검사해서 있으면 삭제해주고 삭제했다고 메시지,
+    # 없으면 생성된 것이 없다고 create로 생성할 수 있다고 메시지.
+    chat_id = context.message.chat_id
+    if chat_id not in dict_data:
+        context.message.reply_text("생성된 알림이 없습니다. /create 명령어로 알람을 생성할 수 있습니다.")
+    else:
+        del dict_data[chat_id]
+        context.message.reply_text("삭제하였습니다. /create 명령어로 알람을 다시 생성할 수 있습니다.")
+
+
+def help(update, context):
+    # 설명
+    context.message.reply_text("/help : kairos 사용 명령어 표시\n/create : 알람 생성\n    /t : 당일에 투표할 시간 설정\n    /v [0-23(숫자)] : 알림 시간 투표\n    /f [0-23(숫자)] : 알림 시간 강제 설정\n/show : 현재 설정된 알람내용 보기\n/del : 설정된 알람 삭제") 
+
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler(list_command[0], create)]
     ,states={
@@ -543,9 +624,14 @@ updater.dispatcher.add_handler(conv_handler4)
 
 #updater.dispatcher.add_handler(CommandHandler('f', forcefixtime, pass_args=True))
 #updater.dispatcher.add_handler(CommandHandler('v', votetime, pass_args=True))
-
-
 # updater.dispatcher.add_handler(CommandHandler('create', create))
+
+updater.dispatcher.add_handler(CommandHandler('show', show))
+updater.dispatcher.add_handler(CommandHandler('del', delete))
+updater.dispatcher.add_handler(CommandHandler('help', help))
+
+
+
 print("start")
 updater.start_polling()
 updater.idle()
