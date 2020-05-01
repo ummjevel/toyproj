@@ -2,7 +2,8 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, MessageHandler, CommandHandler, Filters, ConversationHandler, CallbackQueryHandler
 import json
-
+import pytz
+import datetime
 from collections import Counter 
 
 from telegram import Bot
@@ -93,7 +94,7 @@ updater = Updater(kairos_token) #, use_context=True)
 def hello(update, context):
     context.message.reply_text("got message!")
 
-def create(update, context):
+def create(update, context, job_queue):
     reply_markup = InlineKeyboardMarkup([makebutton(0), makebutton(1)])
     context.message.reply_text(list_message[0], reply_markup=reply_markup)
     chat_id = context.message.chat_id
@@ -106,7 +107,7 @@ def create(update, context):
     return REPEAT
     #return ConversationHandler.END
 
-def repeat(update, context):
+def repeat(update, context, job_queue):
     query = context.callback_query
     chat_id = query.message.chat_id
     
@@ -135,7 +136,7 @@ def repeat(update, context):
         )
         return CHOOSE
 
-def choose(update, context):
+def choose(update, context, job_queue):
     query = context.callback_query
     chat_id = query.message.chat_id
     #list_channel[chat_id] = 'choose'
@@ -170,7 +171,7 @@ def choose(update, context):
     )
     return CHOOSE_CHK
 
-def choose_chk(update, context):
+def choose_chk(update, context, job_queue):
     query = context.callback_query
     chat_id = query.message.chat_id
     #list_channel[chat_id] = 'choose_chk'
@@ -261,7 +262,7 @@ def choose_chk(update, context):
     return CHOOSE_CHK
 
 
-def ask(update, context):
+def ask(update, context, job_queue):
     query = context.callback_query
     chat_id = query.message.chat_id
     
@@ -306,7 +307,7 @@ def ask(update, context):
     # return VOTE
     #return ConversationHandler.END
 
-def ask_chk(update, context):
+def ask_chk(update, context, job_queue):
     query = context.callback_query
     chat_id = query.message.chat_id
     #list_channel[chat_id] = 'ask_chk'
@@ -319,10 +320,12 @@ def ask_chk(update, context):
             ,text=list_message[5] # 투표하라
         )
         dict_data[chat_id]['setwhen'] = 'now'
-        
+    else:
+        # 당일 알림
+        print("당일알림!!", dict_data[chat_id])
     return ConversationHandler.END
 
-def vote(update, context):
+def vote(update, context, job_queue):
     query = context.callback_query
     chat_id = query.message.chat_id
     #list_channel[chat_id] = 'vote'
@@ -335,7 +338,7 @@ def vote(update, context):
         )
     return ConversationHandler.END
 
-def ensure(update, context):
+def ensure(update, context, job_queue):
     query = context.callback_query
     chat_id = query.message.chat_id
     # fix_chk
@@ -349,7 +352,7 @@ def ensure(update, context):
     )
     return ConversationHandler.END
 
-def fix(update, context):
+def fix(update, context, job_queue):
     query = context.callback_query
     chat_id = query.message.chat_id
     
@@ -368,7 +371,7 @@ def fix(update, context):
     )
     return PREACQ
 
-def preacq(update, context):
+def preacq(update, context, job_queue):
     query = context.callback_query
     chat_id = query.message.chat_id
     
@@ -387,7 +390,7 @@ def preacq(update, context):
     )
     return PREACQ2
 
-def preacq2(update, context):
+def preacq2(update, context, job_queue):
     query = context.callback_query
     chat_id = query.message.chat_id
     
@@ -410,6 +413,8 @@ def preacq2(update, context):
         dict_data[chat_id]['preacq'] = True
         return COMP
     elif query.data == "no":
+        # 미리알림 안함
+        # 완료
         update.edit_message_text(
             chat_id=chat_id
             ,message_id=query.message.message_id
@@ -424,7 +429,7 @@ def preacq2(update, context):
         #return ConversationHandler.END
 
 
-def comp(update, context):
+def comp(update, context, job_queue):
     query = context.callback_query
     chat_id = query.message.chat_id
     
@@ -433,6 +438,7 @@ def comp(update, context):
     
     if query.data == 'cancel':
         dict_data[chat_id]['preacq'] = False
+        # 완료
         update.edit_message_text(
             chat_id=chat_id
             ,message_id=query.message.message_id
@@ -445,6 +451,7 @@ def comp(update, context):
                                 , message_id=query.message.message_id)
     else:
         dict_data[chat_id]['preacqtime'] = query.data
+        # 완료
         update.edit_message_text(
             chat_id=chat_id
             ,message_id=query.message.message_id
@@ -459,7 +466,7 @@ def comp(update, context):
     # )
     
 
-def fixtime_tday(update, context, args):
+def fixtime_tday(update, context, args, job_queue):
     chat_id = context.message.chat_id
     if chat_id in dict_data and 'setwhen' in dict_data[chat_id]:
 
@@ -476,6 +483,41 @@ def fixtime_tday(update, context, args):
                 context.message.reply_text(list_message[10].format(args[0]) + list_message[8], reply_markup=reply_markup) 
                 # 시간 설정 완료했으니 당일 알림 줄게 # 미리알림 하쉴?
                 dict_data[chat_id]['tdayalarmtime'] = input_time
+                # 당일 알림 설정
+                KST = datetime.timezone(datetime.timedelta(hours=9))
+                # 현재 날짜
+                # 당일 알림할 요일
+                # 현재 날짜 요일과 당일 알림할 요일 계산하여 남은 일수 계산.
+                # 현재 날짜에서 그만큼 더해서 보여주기.
+                date_now = datetime.datetime.now()
+                date_now_weekday = date_now.weekday() # 일:6 월:0 화:1 수:2 목:3 금:4 토:5
+                date_selected_weekday_result = []
+                date_selected_weekday = [index for index, value in enumerate(dict_data[chat_id]['week']) if value == True]
+                # 사용자가 선택한 요일을 목록에 넣어주기.
+                for val in date_selected_weekday:
+                    # 일:0 월:1 화:2 수:3 목:4 금:5 토:6 -> 일:6 월:0 화:1 수:2 목:3 금:4 토:5
+                    if val == 0:
+                        date_selected_weekday_result.append(6)
+                    else:
+                        date_selected_weekday_result.append(val - 1)
+                
+                # 현재 요일과 목록에 넣은 요일 중에 일수 차이를 넣은 리스트 만들고, 돌면서 add job
+                date_selected_weekday_diff = []
+                for i in date_selected_weekday_result:
+                    if i == date_now_weekday:
+                        date_selected_weekday_diff.append(0)
+                    elif i > date_now_weekday:
+                        date_selected_weekday_diff.append(i - date_now_weekday)
+                    elif i < date_now_weekday:
+                        date_selected_weekday_diff.append(7 - (date_now_weekday - i))
+                
+                # 당일 알림인 경우 당일에 알림을 줘서 매번 투표할 수 있도록
+                # 당일 알림이 아닌 경우는 투표 이후 알림 설정하고
+                # 당일 알림인 경우 당일 알림하고 투표 이후에 알림 설정
+                for i in date_selected_weekday_diff:
+                    date_now_added = date_now + datetime.timedelta(days=i)
+                    korea_1_1 = datetime.datetime(date_now_added.year, date_now_added.month, date_now_added.day, input_time, 12, 0, tzinfo=KST)
+                    job_queue.run_once(callback_alarm_tday, korea_1_1, context=context.message.chat_id)
                 return PREACQ2
             else:
                 context.message.reply_text(list_message[14].format('t')) # 제대로 입력하라고 했잖니 0-23
@@ -488,11 +530,11 @@ def fixtime_tday(update, context, args):
         context.message.reply_text("정상적인 접근이 아닙니다.\n/create 명령어로 알람 등록을 시작해주세요.") # 제대로 입력하라고 했잖니 0-23
         return ConversationHandler.END
 
-def forcefixtime(update, context, args):
+def forcefixtime(update, context, args, job_queue):
     chat_id = context.message.chat_id
     
     # save state
-
+    # 당일 알림을 하더라도 그냥 강제로 설정하고 싶을 때 되도록..
     if chat_id in dict_data and 'setwhen' in dict_data[chat_id]:
 
         dict_data[chat_id]['state'] = 'forcefixtime'
@@ -520,13 +562,13 @@ def forcefixtime(update, context, args):
         return ConversationHandler.END
 
 
-def votetime(update, context, args):
+def votetime(update, context, args, job_queue):
     chat_id = context.message.chat_id
     
     # save state
     # dict_data[chat_id]['state'] = 'votetime'
 
-    if chat_id in dict_data and 'setwhen' in dict_data[chat_id]:
+    if chat_id in dict_data and 'setwhen' in dict_data[chat_id] and dict_data[chat_id]['setwhen'] == 'now':
 
         dict_data[chat_id]['voted'] = {}
         input_time = int(args[0])
@@ -564,7 +606,7 @@ def votetime(update, context, args):
 
 
 
-def show(update, context):
+def show(update, context, job_queue):
     # 리스트에 채널명으로 검사해서 있으면 보여준다
     chat_id = context.message.chat_id
     if chat_id not in dict_data:
@@ -677,7 +719,7 @@ def show(update, context):
             context.message.reply_text(strtext)
 
 
-def delete(update, context):
+def delete(update, context, job_queue):
     # 리스트에 채널명으로 검사해서 있으면 삭제해주고 삭제했다고 메시지,
     # 없으면 생성된 것이 없다고 create로 생성할 수 있다고 메시지.
     chat_id = context.message.chat_id
@@ -692,59 +734,73 @@ def help(update, context):
     # 설명
     context.message.reply_text("/help : kairos 사용 명령어 표시\n/create : 알람 생성\n    /t : 당일에 투표할 시간 설정\n    /v [0-23(숫자)] : 알림 시간 투표\n    /f [0-23(숫자)] : 알림 시간 강제 설정\n/show : 현재 설정된 알람내용 보기\n/del : 설정된 알람 삭제") 
 
+def callback_alarm(bot, job):
+    bot.send_message(chat_id=job.context, text='BEEP')
+
+def callback_timer(update, context, job_queue):
+    update.send_message(chat_id=context.message.chat_id,
+                             text='Setting a timer for 10 seconds!')
+
+    job_queue.run_once(callback_alarm, 10, context=context.message.chat_id)
+
+# 당일알림
+def callback_alarm_tday(bot, job):
+    dict_data[job.context]['setwhen'] = 'now'
+    bot.send_message(chat_id=job.context, text=list_message[5] )
+
 conv_handler = ConversationHandler(
-    entry_points=[CommandHandler(list_command[0], create)]
+    entry_points=[CommandHandler(list_command[0], create, pass_job_queue=True)]
     ,states={
-         CREATE: [CallbackQueryHandler(create)]
-        ,REPEAT: [CallbackQueryHandler(repeat)]
-        ,CHOOSE: [CallbackQueryHandler(choose)]
-        ,CHOOSE_CHK: [CallbackQueryHandler(choose_chk)]
-        ,ASK: [CallbackQueryHandler(ask)]
-        ,ASK_CHK: [CallbackQueryHandler(ask_chk)]
-        ,VOTE: [CallbackQueryHandler(vote)]
+         CREATE: [CallbackQueryHandler(create, pass_job_queue=True)]
+        ,REPEAT: [CallbackQueryHandler(repeat, pass_job_queue=True)]
+        ,CHOOSE: [CallbackQueryHandler(choose, pass_job_queue=True)]
+        ,CHOOSE_CHK: [CallbackQueryHandler(choose_chk, pass_job_queue=True)]
+        ,ASK: [CallbackQueryHandler(ask, pass_job_queue=True)]
+        ,ASK_CHK: [CallbackQueryHandler(ask_chk, pass_job_queue=True)]
+        ,VOTE: [CallbackQueryHandler(vote, pass_job_queue=True)]
         #,ENSURE: [CallbackQueryHandler(ensure)]
         #,FIX: [CallbackQueryHandler(fix)]
-        ,PREACQ: [CallbackQueryHandler(preacq)]
-        ,PREACQ2: [CallbackQueryHandler(preacq2)]
-        ,COMP: [CallbackQueryHandler(comp)]
+        ,PREACQ: [CallbackQueryHandler(preacq, pass_job_queue=True)]
+        ,PREACQ2: [CallbackQueryHandler(preacq2, pass_job_queue=True)]
+        ,COMP: [CallbackQueryHandler(comp, pass_job_queue=True)]
         # ,FIX_TDAY: [CallbackQueryHandler(fixtime_tday)]
     }
-    ,fallbacks=[CommandHandler(list_command[0], create)]
+    ,fallbacks=[CommandHandler(list_command[0], create, pass_job_queue=True)]
     ,allow_reentry=True
 )
 
 updater.dispatcher.add_handler(conv_handler)
 
 conv_handler2 = ConversationHandler(
-    entry_points=[CommandHandler('t', fixtime_tday, pass_args=True)]
+    entry_points=[CommandHandler('t', fixtime_tday, pass_args=True, pass_job_queue=True)]
     ,states={
-        PREACQ2: [CallbackQueryHandler(preacq2)]
-        ,COMP: [CallbackQueryHandler(comp)]
+        PREACQ2: [CallbackQueryHandler(preacq2, pass_job_queue=True)]
+        ,COMP: [CallbackQueryHandler(comp, pass_job_queue=True)]
         # ,FIX_TDAY: [CallbackQueryHandler(fixtime_tday)]
     }
-    ,fallbacks=[CommandHandler('t', fixtime_tday, pass_args=True)]
+    ,fallbacks=[CommandHandler('t', fixtime_tday, pass_args=True, pass_job_queue=True)]
 )
 updater.dispatcher.add_handler(conv_handler2)
 
 conv_handler3 = ConversationHandler(
-    entry_points=[CommandHandler('f', forcefixtime, pass_args=True)]
+    entry_points=[CommandHandler('f', forcefixtime, pass_args=True, pass_job_queue=True)]
     ,states={
-        PREACQ2: [CallbackQueryHandler(preacq2)]
-        ,COMP: [CallbackQueryHandler(comp)]
+        PREACQ2: [CallbackQueryHandler(preacq2, pass_job_queue=True)]
+        ,COMP: [CallbackQueryHandler(comp, pass_job_queue=True)]
         # ,FIX_TDAY: [CallbackQueryHandler(fixtime_tday)]
     }
-    ,fallbacks=[CommandHandler('f', forcefixtime, pass_args=True)]
+    ,fallbacks=[CommandHandler('f', forcefixtime, pass_args=True, pass_job_queue=True)]
 )
 updater.dispatcher.add_handler(conv_handler3)
 
 conv_handler4 = ConversationHandler(
-    entry_points=[CommandHandler('v', votetime, pass_args=True)]
+    entry_points=[CommandHandler('v', votetime, pass_args=True, pass_job_queue=True)]
     ,states={
-        PREACQ2: [CallbackQueryHandler(preacq2)]
-        ,COMP: [CallbackQueryHandler(comp)]
+        PREACQ2: [CallbackQueryHandler(preacq2, pass_job_queue=True)]
+        ,COMP: [CallbackQueryHandler(comp, pass_job_queue=True)]
         # ,FIX_TDAY: [CallbackQueryHandler(fixtime_tday)]
     }
-    ,fallbacks=[CommandHandler('v', votetime, pass_args=True)]
+    ,fallbacks=[CommandHandler('v', votetime, pass_args=True, pass_job_queue=True)]
 )
 updater.dispatcher.add_handler(conv_handler4)
 
@@ -752,7 +808,7 @@ updater.dispatcher.add_handler(conv_handler4)
 #updater.dispatcher.add_handler(CommandHandler('v', votetime, pass_args=True))
 # updater.dispatcher.add_handler(CommandHandler('create', create))
 
-updater.dispatcher.add_handler(CommandHandler('show', show))
+updater.dispatcher.add_handler(CommandHandler('show', show, pass_job_queue=True))
 # conv_handler5 = ConversationHandler(
 #     entry_points=[CommandHandler('show', show)]
 #     ,states={
@@ -773,8 +829,11 @@ updater.dispatcher.add_handler(CommandHandler('show', show))
 # updater.dispatcher.add_handler(conv_handler5)
 
 
-updater.dispatcher.add_handler(CommandHandler('del', delete))
+updater.dispatcher.add_handler(CommandHandler('del', delete, pass_job_queue=True))
 updater.dispatcher.add_handler(CommandHandler('help', help))
+
+timer_handler = CommandHandler('timer', callback_timer, pass_job_queue=True)
+updater.dispatcher.add_handler(timer_handler)
 
 
 

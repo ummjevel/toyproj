@@ -209,14 +209,14 @@ def close_callback(update, context):
 
     return ConversationHandler.END
 
-def callback_alarm(context):
-    context.bot.sendMessage(chat_id=context.job.context,
-                            text='BEEEEEEEEEEP!!!!')
+def callback_alarm(bot, job):
+    bot.send_message(chat_id=job.context, text='BEEP')
 
-def callback_timer(update, context):
-    context.bot.send_message(chat_id=update.message.chat_id,
-                            text='Setting a timer for 10 seconds!')
-    context.job_queue.run_once(callback_alarm, 10, context=update.message.chat_id)
+def callback_timer(update, context, job_queue):
+    update.send_message(chat_id=context.message.chat_id,
+                             text='Setting a timer for 10 seconds!')
+
+    job_queue.run_once(callback_alarm, 10, context=context.message.chat_id)
 
 def vote_alarm(update, context):
     #text_arg = context.args[0]
@@ -229,9 +229,9 @@ def vote_alarm_callback(update, context):
                             ,text='abcde')
 
 if __name__ == "__main__":
-    # kairos_bot_token = "1110549427:AAHYDs1Lo3zUmSUpprI_qN04m-ekRSfvhxw"
+    kairos_bot_token = "1110549427:AAHYDs1Lo3zUmSUpprI_qN04m-ekRSfvhxw"
     
-    # alm = TelBot("kairos", kairos_bot_token)
+    alm = TelBot("kairos", kairos_bot_token)
 
     # dict_process = { CREATE: [CallbackQueryHandler(create_callback)]
     #                     , REPEAT: [CallbackQueryHandler(repeated_callback)]
@@ -257,8 +257,8 @@ if __name__ == "__main__":
 
     # #alm.updater.dispatcher.add_handler(CommandHandler('once', job_callback, pass_job_queue=True))
     
-    # timer_handler = CommandHandler('timer', callback_timer, pass_job_queue=True, pass_args=True)
-    # alm.updater.dispatcher.add_handler(timer_handler)
+    timer_handler = CommandHandler('timer', callback_timer, pass_job_queue=True, pass_args=True)
+    alm.updater.dispatcher.add_handler(timer_handler)
 
     # alm.addHandler('c', 'f', vote_alarm, vote_alarm_callback, True)
 
@@ -268,8 +268,8 @@ if __name__ == "__main__":
     # alm.start()
 
 
-    dict_list = {"3o233423":3, "sdfjlskjfa": 4, "dfjal;sdkfas":3, "djflksadjfa":5}
+    # dict_list = {"3o233423":3, "sdfjlskjfa": 4, "dfjal;sdkfas":3, "djflksadjfa":5}
 
-    determine = [val for val in dict_list.values()]
-    print(Counter(determine).most_common(1)[0][0])
+    # determine = [val for val in dict_list.values()]
+    # print(Counter(determine).most_common(1)[0][0])
 
