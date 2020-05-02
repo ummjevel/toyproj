@@ -284,17 +284,18 @@ def ask(update, context, job_queue):
         update.edit_message_text(
             chat_id=chat_id
             ,message_id=query.message.message_id
-            ,text=list_message[6] + list_message[16] # 당일 알림 언제할래
+            ,text=list_message[6] # + list_message[16] # 당일 알림 언제할래
         )
-        reply_markup = InlineKeyboardMarkup([makebutton(4)]) #, makebutton(2)])
-        update.edit_message_reply_markup(
-            chat_id=chat_id
-            ,message_id=query.message.message_id
-            ,reply_markup=reply_markup
-        )
+        # reply_markup = InlineKeyboardMarkup([makebutton(4)]) #, makebutton(2)])
+        # update.edit_message_reply_markup(
+        #     chat_id=chat_id
+        #     ,message_id=query.message.message_id
+        #     ,reply_markup=reply_markup
+        # )
         dict_data[chat_id]['setwhen'] = 'tday'
         #return ENSURE
-        return ASK_CHK
+        #return ASK_CHK
+        return ConversationHandler.END
     elif query.data == "end":
         update.edit_message_text(text="알겠습니다."
                                 , chat_id=chat_id
@@ -475,8 +476,8 @@ def comp(update, context, job_queue):
         elif dict_data[chat_id]['preacqtime'] == "b30":
             delta_val = datetime.timedelta(minutes=30)
         elif dict_data[chat_id]['preacqtime'] == "b10":
-            delta_val = datetime.timedelta(seconds=30)
-            #delta_val = datetime.timedelta(minutes=10)
+            #delta_val = datetime.timedelta(seconds=30)
+            delta_val = datetime.timedelta(minutes=10)
 
         #job_queue.jobs()
 
@@ -581,7 +582,7 @@ def fixtime_tday(update, context, args, job_queue):
                 for i in date_selected_weekday_diff:
                     date_now_added = date_now + datetime.timedelta(days=i)
                     #alarm_settime = datetime.datetime(date_now_added.year, date_now_added.month, date_now_added.day, input_time, date_now_added.minute+1, 30, tzinfo=KST)
-                    alarm_settime = datetime.datetime(date_now_added.year, date_now_added.month, date_now_added.day, input_time, 45, 0, tzinfo=KST)
+                    alarm_settime = datetime.datetime(date_now_added.year, date_now_added.month, date_now_added.day, input_time, 0, 0, tzinfo=KST)
                     if dict_data[chat_id]['repeat'] == True:
                         # 당일 알림은 매번 물어보고 run_once로 알림이므로. 당일 알림은 run_repeating이되, 알림은 run_once로..
                         job_queue.run_repeating(callback_alarm_tday, datetime.timedelta(days=7), alarm_settime, context=context.message.chat_id, name='tday_' + str(chat_id))
@@ -850,10 +851,10 @@ def show(update, context, job_queue):
                                 context.message.reply_text(strtext, reply_markup=reply_markup)
                         else:
                             strtext += "당일 투표알림이 설정되었지만 시간은 설정되어있지 않네요.\n /t [0-23] 을 입력하여 설정해주세요.\n"
-                            reply_markup = InlineKeyboardMarkup([makebutton(4)]) # 지금부터
-                            context.message.reply_text(strtext + list_message[16], reply_markup=reply_markup)
-                            #context.message.reply_text(strtext + list_message[16])
-                            #return ConversationHandler.END
+                            #reply_markup = InlineKeyboardMarkup([makebutton(4)]) # 지금부터
+                            #context.message.reply_text(strtext + list_message[16], reply_markup=reply_markup)
+                            context.message.reply_text(strtext)
+                            return ConversationHandler.END
                             
                 else:
                     # 요일 설정 완료까지 한 상태 인데 당일알림인지 지금부터인지 투표시간은 안 정한 상태 (정했으면 위 setwhen에 걸렸음)
