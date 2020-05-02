@@ -322,6 +322,15 @@ def ask_chk(update, context, job_queue):
         dict_data[chat_id]['setwhen'] = 'now'
     else:
         # 당일 알림
+        # 근데 /t 에서 보내주고 있어서..
+        #if query.data == "yes":
+            # /t 당일알림을 받고 투표 이후에 알람 시간을 확정한 후에 들어온 것. 미리알림을 물어보는 것 미리알림 지정함
+            # 미리알림 버튼을 보여주고 이동하도록.
+        #    pass
+        #elif query.data == "no":
+            # 미리알림 지정 안함
+            # 수고했씁니다...
+        #    pass
         print("당일알림!!", dict_data[chat_id])
     return ConversationHandler.END
 
@@ -451,6 +460,66 @@ def comp(update, context, job_queue):
                                 , message_id=query.message.message_id)
     else:
         dict_data[chat_id]['preacqtime'] = query.data
+
+        # 미리알림 시간
+        # ,["3시간 전", "b3"] # 14
+        # ,["1시간 전", "b1"] # 15
+        # ,["30분 전", "b30"] # 16
+        # ,["10분 전", "b10"] # 17
+
+        delta_val = datetime.timedelta()
+        if dict_data[chat_id]['preacqtime'] == "b3":
+            delta_val = datetime.timedelta(hours=3)
+        elif dict_data[chat_id]['preacqtime'] == "b1":
+            delta_val = datetime.timedelta(hours=1)
+        elif dict_data[chat_id]['preacqtime'] == "b30":
+            delta_val = datetime.timedelta(minutes=30)
+        elif dict_data[chat_id]['preacqtime'] == "b10":
+            delta_val = datetime.timedelta(seconds=30)
+            #delta_val = datetime.timedelta(minutes=10)
+
+        #job_queue.jobs()
+
+        # 미리알림 설정
+        KST = datetime.timezone(datetime.timedelta(hours=9))
+        # 현재 날짜
+        # 당일 알림할 요일
+        # 현재 날짜 요일과 당일 알림할 요일 계산하여 남은 일수 계산.
+        # 현재 날짜에서 그만큼 더해서 보여주기.
+        date_now = datetime.datetime.now()
+        date_now_weekday = date_now.weekday() # 일:6 월:0 화:1 수:2 목:3 금:4 토:5
+        date_selected_weekday_result = []
+        date_selected_weekday = [index for index, value in enumerate(dict_data[chat_id]['week']) if value == True]
+        # 사용자가 선택한 요일을 목록에 넣어주기.
+        for val in date_selected_weekday:
+            # 일:0 월:1 화:2 수:3 목:4 금:5 토:6 -> 일:6 월:0 화:1 수:2 목:3 금:4 토:5
+            if val == 0:
+                date_selected_weekday_result.append(6)
+            else:
+                date_selected_weekday_result.append(val - 1)
+        
+        # 현재 요일과 목록에 넣은 요일 중에 일수 차이를 넣은 리스트 만들고, 돌면서 add job
+        date_selected_weekday_diff = []
+        for i in date_selected_weekday_result:
+            if i == date_now_weekday:
+                date_selected_weekday_diff.append(0)
+            elif i > date_now_weekday:
+                date_selected_weekday_diff.append(i - date_now_weekday)
+            elif i < date_now_weekday:
+                date_selected_weekday_diff.append(7 - (date_now_weekday - i))
+        
+        for i in date_selected_weekday_diff:
+            date_now_added = date_now + datetime.timedelta(days=i)
+            date_now_added = date_now_added.replace(hour = dict_data[chat_id]['alarmtime'], minute=date_now_added.minute+2, second=30)
+            #date_now_added = date_now_added.replace(hour=dict_data[chat_id]['alarmtime'], minute=0, second=0)
+            date_now_added = date_now_added - delta_val
+            alarm_settime = datetime.datetime(date_now_added.year, date_now_added.month, date_now_added.day, date_now_added.hour, date_now_added.minute, date_now_added.second, tzinfo=KST)
+            if dict_data[chat_id]['repeat'] == True and dict_data[chat_id]['setwhen'] == 'now':
+                # 반복을 할 경우 # 당일 알림이면 run_once이고, 당일 알림이 아닐 경우에는 
+                job_queue.run_repeating(callback_alarm_preacq, datetime.timedelta(days=7), alarm_settime, context=chat_id, name='preacq_' + str(chat_id))
+            else:
+                job_queue.run_once(callback_alarm_preacq, alarm_settime, context=chat_id, name='preacq_' + str(chat_id))
+
         # 완료
         update.edit_message_text(
             chat_id=chat_id
@@ -458,13 +527,7 @@ def comp(update, context, job_queue):
             ,text=list_message[9] # 설정완료
         )   
         return ConversationHandler.END
-    # reply_markup = InlineKeyboardMarkup([makebutton(0), makebutton(1), makebutton(2)])
-    # update.edit_message_reply_markup(
-    #     chat_id=query.message.chat_id
-    #     ,message_id=query.message.message_id
-    #     ,reply_markup=reply_markup
-    # )
-    
+        
 
 def fixtime_tday(update, context, args, job_queue):
     chat_id = context.message.chat_id
@@ -479,8 +542,9 @@ def fixtime_tday(update, context, args, job_queue):
             input_time = int(args[0])
             if 0 <= input_time and input_time <= 23:
                 # save
-                reply_markup = InlineKeyboardMarkup([makebutton(0), makebutton(1)]) #, makebutton(2)])
-                context.message.reply_text(list_message[10].format(args[0]) + list_message[8], reply_markup=reply_markup) 
+                #reply_markup = InlineKeyboardMarkup([makebutton(0), makebutton(1)]) #, makebutton(2)])
+                #context.message.reply_text(list_message[10].format(args[0]) + list_message[8], reply_markup=reply_markup) 
+                context.message.reply_text(list_message[10].format(args[0])) 
                 # 시간 설정 완료했으니 당일 알림 줄게 # 미리알림 하쉴?
                 dict_data[chat_id]['tdayalarmtime'] = input_time
                 # 당일 알림 설정
@@ -516,9 +580,14 @@ def fixtime_tday(update, context, args, job_queue):
                 # 당일 알림인 경우 당일 알림하고 투표 이후에 알림 설정
                 for i in date_selected_weekday_diff:
                     date_now_added = date_now + datetime.timedelta(days=i)
-                    korea_1_1 = datetime.datetime(date_now_added.year, date_now_added.month, date_now_added.day, input_time, 12, 0, tzinfo=KST)
-                    job_queue.run_once(callback_alarm_tday, korea_1_1, context=context.message.chat_id)
-                return PREACQ2
+                    alarm_settime = datetime.datetime(date_now_added.year, date_now_added.month, date_now_added.day, input_time, date_now_added.minute+1, 30, tzinfo=KST)
+                    if dict_data[chat_id]['repeat'] == True:
+                        # 당일 알림은 매번 물어보고 run_once로 알림이므로. 당일 알림은 run_repeating이되, 알림은 run_once로..
+                        job_queue.run_repeating(callback_alarm_tday, datetime.timedelta(days=7), alarm_settime, context=context.message.chat_id, name='tday_' + str(chat_id))
+                    else:
+                        job_queue.run_once(callback_alarm_tday, alarm_settime, context=context.message.chat_id, name='tday_' + str(chat_id))
+                #return PREACQ2
+                return ConversationHandler.END
             else:
                 context.message.reply_text(list_message[14].format('t')) # 제대로 입력하라고 했잖니 0-23
                 return ConversationHandler.END
@@ -549,6 +618,9 @@ def forcefixtime(update, context, args, job_queue):
                 dict_data[chat_id]['setdone'] = True
                 dict_data[chat_id]['alarmtime'] = input_time
                 dict_data[chat_id]['setwhen'] = 'now' # 당일알림도 /f를 하면 바로 설정 가능함.
+
+                # job_queue
+
                 return PREACQ2
             else:
                 context.message.reply_text(list_message[14].format('f')) # 제대로 입력하라고 했잖니 0-23
@@ -568,7 +640,7 @@ def votetime(update, context, args, job_queue):
     # save state
     # dict_data[chat_id]['state'] = 'votetime'
 
-    if chat_id in dict_data and 'setwhen' in dict_data[chat_id] and dict_data[chat_id]['setwhen'] == 'now':
+    if chat_id in dict_data and 'setwhen' in dict_data[chat_id] and (('tdayalarmdone' in dict_data[chat_id] and dict_data[chat_id]['setwhen'] == 'tday') or (dict_data[chat_id]['setwhen'] == 'now')):
 
         dict_data[chat_id]['voted'] = {}
         input_time = int(args[0])
@@ -586,6 +658,9 @@ def votetime(update, context, args, job_queue):
                 dict_data[chat_id]['alarmtime'] = determin_time
                 reply_markup = InlineKeyboardMarkup([makebutton(0), makebutton(1)]) #, makebutton(2)])
                 context.message.reply_text(list_message[7].format(args[0]) + list_message[8], reply_markup=reply_markup) 
+
+                # job_queue 설정
+
                 return PREACQ2
             else:
                 # {} 시로 저장되었고, {} 명의 투표가 남았습니다. 17
@@ -642,7 +717,17 @@ def show(update, context, job_queue):
                                 if this_data['preacq'] == True:
                                     if 'preacqtime' in this_data:
                                         preacq_value = [i[0] for i in list_button if i[1] == this_data['preacqtime']]
+
+                                        if preacq_value[0] == "b3":
+                                            preacq_value[0] = list_button[14][0]
+                                        elif preacq_value[0] == "b1":
+                                            preacq_value[0] = list_button[15][0]
+                                        elif preacq_value[0] == "b30":
+                                            preacq_value[0] = list_button[16][0]
+                                        elif preacq_value[0] == "b10":
+                                            preacq_value[0] = list_button[17][0]
                                         strtext += "미리알림은 {} 입니다.\n".format(preacq_value[0])
+
                                         context.message.reply_text(strtext)
                                     else:
                                         strtext += "미리알림은 사용하시되 시간을 안정하셨군요.\n"
@@ -745,8 +830,25 @@ def callback_timer(update, context, job_queue):
 
 # 당일알림
 def callback_alarm_tday(bot, job):
-    dict_data[job.context]['setwhen'] = 'now'
+    dict_data[job.context]['tdayalarmdone'] = True
     bot.send_message(chat_id=job.context, text=list_message[5] )
+
+# 미리알림
+def callback_alarm_preacq(bot, job):
+    chat_id = job.context
+    preacq_value = dict_data[chat_id]['preacq']
+    
+    if preacq_value == "b3":
+        preacq_value = list_button[14][0]
+    elif preacq_value == "b1":
+        preacq_value = list_button[15][0]
+    elif preacq_value == "b30":
+        preacq_value = list_button[16][0]
+    elif preacq_value == "b10":
+        preacq_value = list_button[17][0]
+
+    bot.send_message(chat_id=job.context, text='미리알림: {} 입니다.'.format(preacq_value))
+
 
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler(list_command[0], create, pass_job_queue=True)]
