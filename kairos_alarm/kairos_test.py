@@ -1,6 +1,6 @@
 # 두 번 정도 선택할 수 있는 핸들러 생성해서 실행해보기
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, MessageHandler, CommandHandler, Filters, ConversationHandler, CallbackQueryHandler
+from telegram.ext import Updater, MessageHandler, CommandHandler, Filters, ConversationHandler, CallbackQueryHandler, Job
 import json
 import pytz
 import datetime
@@ -101,6 +101,8 @@ def create(update, context, job_queue):
     # save state
     if chat_id in dict_data:
         del dict_data[chat_id]
+        # delete job
+        job_queue.schedule_removal()
 
     dict_data[chat_id] = {'state':'create'}
 
