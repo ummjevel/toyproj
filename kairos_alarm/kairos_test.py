@@ -510,8 +510,8 @@ def comp(update, context, job_queue):
         
         for i in date_selected_weekday_diff:
             date_now_added = date_now + datetime.timedelta(days=i)
-            date_now_added = date_now_added.replace(hour = dict_data[chat_id]['alarmtime'], minute=date_now_added.minute+2, second=30)
-            #date_now_added = date_now_added.replace(hour=dict_data[chat_id]['alarmtime'], minute=0, second=0)
+            #date_now_added = date_now_added.replace(hour = dict_data[chat_id]['alarmtime'], minute=date_now_added.minute+2, second=30)
+            date_now_added = date_now_added.replace(hour=dict_data[chat_id]['alarmtime'], minute=0, second=0)
             date_now_added = date_now_added - delta_val
             alarm_settime = datetime.datetime(date_now_added.year, date_now_added.month, date_now_added.day, date_now_added.hour, date_now_added.minute, date_now_added.second, tzinfo=KST)
             if dict_data[chat_id]['repeat'] == True and dict_data[chat_id]['setwhen'] == 'now':
@@ -580,7 +580,8 @@ def fixtime_tday(update, context, args, job_queue):
                 # 당일 알림인 경우 당일 알림하고 투표 이후에 알림 설정
                 for i in date_selected_weekday_diff:
                     date_now_added = date_now + datetime.timedelta(days=i)
-                    alarm_settime = datetime.datetime(date_now_added.year, date_now_added.month, date_now_added.day, input_time, date_now_added.minute+1, 30, tzinfo=KST)
+                    #alarm_settime = datetime.datetime(date_now_added.year, date_now_added.month, date_now_added.day, input_time, date_now_added.minute+1, 30, tzinfo=KST)
+                    alarm_settime = datetime.datetime(date_now_added.year, date_now_added.month, date_now_added.day, input_time, 45, 0, tzinfo=KST)
                     if dict_data[chat_id]['repeat'] == True:
                         # 당일 알림은 매번 물어보고 run_once로 알림이므로. 당일 알림은 run_repeating이되, 알림은 run_once로..
                         job_queue.run_repeating(callback_alarm_tday, datetime.timedelta(days=7), alarm_settime, context=context.message.chat_id, name='tday_' + str(chat_id))
@@ -620,7 +621,40 @@ def forcefixtime(update, context, args, job_queue):
                 dict_data[chat_id]['setwhen'] = 'now' # 당일알림도 /f를 하면 바로 설정 가능함.
 
                 # job_queue
-
+                KST = datetime.timezone(datetime.timedelta(hours=9))
+                date_now = datetime.datetime.now()
+                date_now_weekday = date_now.weekday() # 일:6 월:0 화:1 수:2 목:3 금:4 토:5
+                date_selected_weekday_result = []
+                date_selected_weekday = [index for index, value in enumerate(dict_data[chat_id]['week']) if value == True]
+                # 사용자가 선택한 요일을 목록에 넣어주기.
+                for val in date_selected_weekday:
+                    # 일:0 월:1 화:2 수:3 목:4 금:5 토:6 -> 일:6 월:0 화:1 수:2 목:3 금:4 토:5
+                    if val == 0:
+                        date_selected_weekday_result.append(6)
+                    else:
+                        date_selected_weekday_result.append(val - 1)
+                
+                # 현재 요일과 목록에 넣은 요일 중에 일수 차이를 넣은 리스트 만들고, 돌면서 add job
+                date_selected_weekday_diff = []
+                for i in date_selected_weekday_result:
+                    if i == date_now_weekday:
+                        date_selected_weekday_diff.append(0)
+                    elif i > date_now_weekday:
+                        date_selected_weekday_diff.append(i - date_now_weekday)
+                    elif i < date_now_weekday:
+                        date_selected_weekday_diff.append(7 - (date_now_weekday - i))
+                
+                for i in date_selected_weekday_diff:
+                    date_now_added = date_now + datetime.timedelta(days=i)
+                    #alarm_settime = datetime.datetime(date_now_added.year, date_now_added.month, date_now_added.day, input_time, date_now_added.minute+3, 30, tzinfo=KST)
+                    alarm_settime = datetime.datetime(date_now_added.year, date_now_added.month, date_now_added.day, input_time, 0, 0, tzinfo=KST)
+                    if dict_data[chat_id]['repeat'] == True and dict_data[chat_id]['setwhen'] == 'now':
+                        # 당일알림인 경우 한 번만, 당일 알림이 아닌 경우이면서 반복이면 한 번만 정한 거니까 반복하도록 설정
+                        job_queue.run_repeating(callback_alarm_kairos, datetime.timedelta(days=7), alarm_settime, context=context.message.chat_id, name='alarm_' + str(chat_id))
+                    else:
+                        # 당일알림이거나 반복이 아닌 경우 한 번만 알림.
+                        job_queue.run_once(callback_alarm_kairos, alarm_settime, context=context.message.chat_id, name='alarm_' + str(chat_id))
+                
                 return PREACQ2
             else:
                 context.message.reply_text(list_message[14].format('f')) # 제대로 입력하라고 했잖니 0-23
@@ -659,7 +693,41 @@ def votetime(update, context, args, job_queue):
                 reply_markup = InlineKeyboardMarkup([makebutton(0), makebutton(1)]) #, makebutton(2)])
                 context.message.reply_text(list_message[7].format(args[0]) + list_message[8], reply_markup=reply_markup) 
 
-                # job_queue 설정
+                # job_queue
+                KST = datetime.timezone(datetime.timedelta(hours=9))
+                date_now = datetime.datetime.now()
+                date_now_weekday = date_now.weekday() # 일:6 월:0 화:1 수:2 목:3 금:4 토:5
+                date_selected_weekday_result = []
+                date_selected_weekday = [index for index, value in enumerate(dict_data[chat_id]['week']) if value == True]
+                # 사용자가 선택한 요일을 목록에 넣어주기.
+                for val in date_selected_weekday:
+                    # 일:0 월:1 화:2 수:3 목:4 금:5 토:6 -> 일:6 월:0 화:1 수:2 목:3 금:4 토:5
+                    if val == 0:
+                        date_selected_weekday_result.append(6)
+                    else:
+                        date_selected_weekday_result.append(val - 1)
+                
+                # 현재 요일과 목록에 넣은 요일 중에 일수 차이를 넣은 리스트 만들고, 돌면서 add job
+                date_selected_weekday_diff = []
+                for i in date_selected_weekday_result:
+                    if i == date_now_weekday:
+                        date_selected_weekday_diff.append(0)
+                    elif i > date_now_weekday:
+                        date_selected_weekday_diff.append(i - date_now_weekday)
+                    elif i < date_now_weekday:
+                        date_selected_weekday_diff.append(7 - (date_now_weekday - i))
+                
+                for i in date_selected_weekday_diff:
+                    date_now_added = date_now + datetime.timedelta(days=i)
+                    #alarm_settime = datetime.datetime(date_now_added.year, date_now_added.month, date_now_added.day, input_time, date_now_added.minute+3, 30, tzinfo=KST)
+                    alarm_settime = datetime.datetime(date_now_added.year, date_now_added.month, date_now_added.day, input_time, 0, 0, tzinfo=KST)
+                    if dict_data[chat_id]['repeat'] == True and dict_data[chat_id]['setwhen'] == 'now':
+                        # 당일알림인 경우 한 번만, 당일 알림이 아닌 경우이면서 반복이면 한 번만 정한 거니까 반복하도록 설정
+                        job_queue.run_repeating(callback_alarm_kairos, datetime.timedelta(days=7), alarm_settime, context=chat_id, name='alarm_' + str(chat_id))
+                    else:
+                        # 당일알림이거나 반복이 아닌 경우 한 번만 알림.
+                        job_queue.run_once(callback_alarm_kairos, alarm_settime, context=chat_id, name='alarm_' + str(chat_id))
+                
 
                 return PREACQ2
             else:
@@ -784,6 +852,8 @@ def show(update, context, job_queue):
                             strtext += "당일 투표알림이 설정되었지만 시간은 설정되어있지 않네요.\n /t [0-23] 을 입력하여 설정해주세요.\n"
                             reply_markup = InlineKeyboardMarkup([makebutton(4)]) # 지금부터
                             context.message.reply_text(strtext + list_message[16], reply_markup=reply_markup)
+                            #context.message.reply_text(strtext + list_message[16])
+                            #return ConversationHandler.END
                             
                 else:
                     # 요일 설정 완료까지 한 상태 인데 당일알림인지 지금부터인지 투표시간은 안 정한 상태 (정했으면 위 setwhen에 걸렸음)
@@ -836,7 +906,7 @@ def callback_alarm_tday(bot, job):
 # 미리알림
 def callback_alarm_preacq(bot, job):
     chat_id = job.context
-    preacq_value = dict_data[chat_id]['preacq']
+    preacq_value = dict_data[chat_id]['preacqtime']
     
     if preacq_value == "b3":
         preacq_value = list_button[14][0]
@@ -848,6 +918,10 @@ def callback_alarm_preacq(bot, job):
         preacq_value = list_button[17][0]
 
     bot.send_message(chat_id=job.context, text='미리알림: {} 입니다.'.format(preacq_value))
+
+# 당일알림
+def callback_alarm_kairos(bot, job):
+    bot.send_message(chat_id=job.context, text='!!!BEEEEEEEEEEEEEEEEEEEEP!!!' )
 
 
 conv_handler = ConversationHandler(
