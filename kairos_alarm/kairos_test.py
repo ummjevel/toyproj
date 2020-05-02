@@ -102,7 +102,8 @@ def create(update, context, job_queue):
     if chat_id in dict_data:
         del dict_data[chat_id]
         # delete job
-        job_queue.schedule_removal()
+        #job_queue.schedule_removal()
+        # 지우는 게 없음.. 이름으로 안되려나..?
 
     dict_data[chat_id] = {'state':'create'}
 
