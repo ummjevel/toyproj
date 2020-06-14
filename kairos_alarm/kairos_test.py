@@ -69,6 +69,12 @@ dict_data = {}
 
 CREATE, REPEAT, CHOOSE, CHOOSE_CHK, ASK, VOTE, ENSURE, FIX, PREACQ, COMP, FIX_TDAY, PREACQ2, ASK_CHK, KEEP_CHOOSE = range(14)
 
+HEY = 200
+ACTION = 201
+EAT = 202
+PLAY = 203
+LOVE = 204
+
 # 언어 설정
 list_button = list_button_ko
 list_message = list_message_ko
@@ -927,6 +933,117 @@ def callback_alarm_preacq(bot, job):
 def callback_alarm_kairos(bot, job):
     bot.send_message(chat_id=job.context, text='!!!BEEEEEEEEEEEEEEEEEEEEP!!!' )
 
+def say(update, context, args):
+    output_message = str(context.message.chat_id) + '은 이렇게 말했습니다.\n' + str(args[0])
+    context.message.reply_text(output_message) 
+
+def hey(update, context, args):
+    hey_message = "이봐.... 나 " + str(args[0]) +  "가 원하는 것은"
+    reply_markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("밥줘", callback_data="eat")]
+        ,[InlineKeyboardButton("놀아줘", callback_data="play")]
+        ,[InlineKeyboardButton("쓰다듬어줘", callback_data="love")]
+    ])
+    context.message.reply_text(text=hey_message, reply_markup=reply_markup)
+    return ACTION
+
+def action(update, context):
+    query = context.callback_query
+    chat_id = query.message.chat_id
+
+    if query.data == "eat":
+        update.edit_message_text(
+            chat_id=chat_id
+            ,message_id=query.message.message_id
+            ,text="뭐먹을래"
+        )
+        reply_markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("사료", callback_data="food")]
+            ,[InlineKeyboardButton("츄르", callback_data="choo")]
+        ]) 
+        update.edit_message_reply_markup(
+            chat_id=chat_id
+            ,message_id=query.message.message_id
+            ,reply_markup=reply_markup
+        )
+        return EAT
+    elif query.data == "play":
+        update.edit_message_text(
+            chat_id=chat_id
+            ,message_id=query.message.message_id
+            ,text="뭐하고놀까"
+        )
+        reply_markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("사냥", callback_data="hunt")]
+            ,[InlineKeyboardButton("숨바꼭질", callback_data="hide")]
+        ]) 
+        update.edit_message_reply_markup(
+            chat_id=chat_id
+            ,message_id=query.message.message_id
+            ,reply_markup=reply_markup
+        )
+        return PLAY
+    elif query.data == "love":
+        update.edit_message_text(
+            chat_id=chat_id
+            ,message_id=query.message.message_id
+            ,text="어딜"
+        )
+        reply_markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("머리", callback_data="head")]
+            ,[InlineKeyboardButton("턱", callback_data="chin")]
+            ,[InlineKeyboardButton("몸", callback_data="body")]
+        ]) 
+        update.edit_message_reply_markup(
+            chat_id=chat_id
+            ,message_id=query.message.message_id
+            ,reply_markup=reply_markup
+        )
+        return LOVE
+
+def eat(update, context):
+    query = context.callback_query
+    chat_id = query.message.chat_id
+    if query.data == "food":
+        update.edit_message_text(
+            chat_id=chat_id
+            ,message_id=query.message.message_id
+            ,text="밥먹자"
+        )
+    elif query.data == "choo":
+        update.edit_message_text(
+            chat_id=chat_id
+            ,message_id=query.message.message_id
+            ,text="간식은 조금만"
+        )
+    return ConversationHandler.END
+
+def play(update, context):
+    query = context.callback_query
+    chat_id = query.message.chat_id
+    if query.data == "hunt":
+        update.edit_message_text(
+            chat_id=chat_id
+            ,message_id=query.message.message_id
+            ,text="딸랑딸랑"
+        )
+    elif query.data == "hide":
+        update.edit_message_text(
+            chat_id=chat_id
+            ,message_id=query.message.message_id
+            ,text="10 9 8 7 ..."
+        )
+    return ConversationHandler.END
+
+def love(update, context):
+    query = context.callback_query
+    chat_id = query.message.chat_id
+    update.edit_message_text(
+        chat_id=chat_id
+        ,message_id=query.message.message_id
+        ,text="쓰담쓰담"
+    )
+    return ConversationHandler.END
 
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler(list_command[0], create, pass_job_queue=True)]
@@ -1014,6 +1131,21 @@ updater.dispatcher.add_handler(CommandHandler('help', help))
 
 timer_handler = CommandHandler('timer', callback_timer, pass_job_queue=True)
 updater.dispatcher.add_handler(timer_handler)
+
+updater.dispatcher.add_handler(CommandHandler('say', say, pass_args=True))
+
+
+test_conv_handler = ConversationHandler(
+    entry_points=[CommandHandler('hey', hey, pass_args=True)]
+    ,states={
+         ACTION: [CallbackQueryHandler(action)]
+        ,EAT: [CallbackQueryHandler(eat)]
+        ,PLAY: [CallbackQueryHandler(play)]
+        ,LOVE: [CallbackQueryHandler(love)]
+    }
+    ,fallbacks=[CommandHandler('hey', hey, pass_args=True)]
+)
+updater.dispatcher.add_handler(test_conv_handler)
 
 
 
