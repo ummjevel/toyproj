@@ -5,6 +5,10 @@
 # from urllib.request import urlopen
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
 # from bs4 import BeautifulSoup
 
 import feedparser
@@ -13,6 +17,18 @@ from time import mktime
 from datetime import datetime, timedelta
 
 import ssl
+
+def select_naverblog_category0(url):
+    # http://blog.naver.com/PostList.nhn?blogId=laonple&categoryNo=0&from=postList
+    # https://blog.naver.com/PostList.nhn?blogId=nu4345
+    if '&categoryNo=0&from=postList' not in url or '/PostList.nhn?blogId=' not in url:
+        # id 추출
+        naverblog_id = url.split('/')[3]
+        # url 에 붙이기.
+        return 'https://blog.naver.com/PostList.nhn?blogId=' + naverblog_id
+    else:
+        return url
+        
 
 # naver blog 의 경우 전체 카테고리이어야 한다. -> 네이버 아이디를 받아서 연결시켜 주던지, 아이디만 추출해서 넣던지.
 # 목록 닫기일 경우 못가져오니 목록 열기까지 해주고 가져와야 한다.
@@ -44,7 +60,7 @@ youtube_list = [
 #   1 : youtube
 
 site_type = 0
-use_rss = 1     # 0: not use rss, use site url, 1: use rss
+use_rss = 0     # 0: not use rss, use site url, 1: use rss
 last_crawled_date = datetime(2020, 6, 1, 23, 59, 59)
 
 # dict in list [ {} ]
@@ -54,7 +70,7 @@ crawled_list = []
 
 
 def crawling_naver_blog():
-    current_crawl_url = naver_blog_list[0]
+    current_crawl_url = naver_blog_list[1]
 
     driver = webdriver.Chrome('./chromedriver')
 
@@ -115,7 +131,11 @@ def crawling_naver_blog():
         #         i['title'], i['link'], i['published_datetime'], i['crawled_datetime']))
     else:
         # site 들어가서 내용 가져오기
-        driver.get(naver_blog_list[2])
+
+        current_crawl_url = select_naverblog_category0(current_crawl_url)
+
+        driver.get(current_crawl_url)
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "toplistSpanBlind")))
 
         # 목록 닫기라고 text 가 되어있어야 가져올 수 있음
         span = driver.find_element_by_id('toplistSpanBlind')
@@ -157,24 +177,41 @@ def crawling_naver_blog():
         for crawled_data in crawled_list:
 
             driver.get(crawled_data['link'])
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "postListBody")))
                 
             if '시간 전' in date_list[index]:
                 date_prev_time = int(date_list[index].split('시간 전')[0])
                 crawled_data['published_datetime'] = datetime.now() - timedelta(hours=date_prev_time)
 
-            # entry_dict['published_datetime'] = datetime.fromtimestamp(mktime(entry['published_parsed']))
-            
-            crawled_data['image_link'] = driver.find_element_by_class_name('se-title-cover').value_of_css_property('background-image')[5:-2]
+            try:
+                crawled_data['image_link'] = driver.find_element_by_class_name('se-title-cover').value_of_css_property('background-image')[5:-2]
+            except NoSuchElementException:
+                # 스마트에디터
+                if len(driver.find_elements_by_id('mainFrame')) != 0:
+                    driver.switch_to.frame(driver.find_elements_by_id('mainFrame'))
+
+                if len(driver.find_elements_by_id('postViewArea')) == 0:
+                    # 스마트 에디터인데 썸네일이 없는 경우
+                    try:
+                        crawled_data['image_link'] = driver.find_elements_by_id('postListBody')[0].find_element_by_xpath('.//div[@class="se-main-container"]//img').get_attribute('src')
+                    except NoSuchElementException:
+                        # 이미지가 없음
+                        crawled_data['image_link'] = ""
+                # 스마트에디터가 x
+                else:
+                    crawled_data['image_link'] = driver.find_elements_by_id('postViewArea')[0].find_element_by_xpath('.//img').get_attribute('src')
+
             crawled_data['description'] = driver.find_element_by_class_name('se-main-container').text[:100]
             crawled_data['crawled_datetime'] = datetime.now()
 
 
-    
 
 def main():
     if site_type == 0:
         # naver blog rss 가져오기
         crawling_naver_blog()
+
+        print('complete!')
 
 
 if __name__ == "__main__":
