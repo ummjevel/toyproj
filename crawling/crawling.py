@@ -59,7 +59,7 @@ youtube_list = [
 #   0 : naver blog
 #   1 : youtube
 
-site_type = 0
+site_type = 1
 use_rss = 0     # 0: not use rss, use site url, 1: use rss
 last_crawled_date = datetime(2020, 6, 1, 23, 59, 59)
 
@@ -99,6 +99,7 @@ def crawling_naver_blog():
                 # image link 직접 들어가서 가져오기..
                 # entry_dict['image_link'] = entry['title']
                 driver.get(entry_dict['link'])
+                WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "postListBody")))
                 #driver.get('https://blog.naver.com/genycho?Redirect=Log&logNo=221978038485&proxyReferer=https%3A%2F%2Fsearch.naver.com%2Fsearch.naver%3Fquery%3Dselenium%26where%3Dpost%26sm%3Dtab_nmr%26nso%3D')
                 # driver.get('https://blog.naver.com/tramper2/221979760263')
                 # 썸네일이 있는 경우
@@ -205,6 +206,9 @@ def crawling_naver_blog():
             crawled_data['crawled_datetime'] = datetime.now()
 
 
+def crawling_youtube():
+    pass
+
 
 def main():
     if site_type == 0:
@@ -212,12 +216,12 @@ def main():
         crawling_naver_blog()
 
         print('complete!')
+    elif site_type == 1:
+        crawling_youtube()
 
 
 if __name__ == "__main__":
     main()
 
 # 해야할 것
-# selenium delay 적용 후 테스트
-# naver 전체 카테고리 선택되도록 url 조정
 # youtube crawling
